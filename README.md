@@ -22,11 +22,6 @@ A NestJS service that transforms payment provider webhooks (Stripe, PayPal, etc.
 npm install
 ```
 
-2. Install required packages (if not already installed):
-```bash
-npm install jsonata
-```
-
 ## Running the Application
 
 ### Development Mode
@@ -177,21 +172,13 @@ curl -X POST http://localhost:3000/webhook?provider=stripe \
 │              │                  │ JSONata expression             │
 │              │                  ▼                                │
 │              │      ┌──────────────────────────────┐             │
-│              │      │ MappingEngineService         │             │
+│              │      │ MappingHelperService         │             │
 │              │      │ - Executes JSONata           │             │
 │              │      │ - Transforms payload         │             │
 │              │      └───────────┬──────────────────┘             │
 │              │                  │                                │
 │              │                  │ transformed result             │
-│              │                  ▼                                │
-│              │      ┌──────────────────────────────┐             │
-│              │      │ SchemaValidatorService       │             │
-│              │      │ - Validates against          │             │
-│              │      │   ForterChargebackDto        │             │
-│              │      │ - Uses class-validator       │             │
-│              │      └───────────┬──────────────────┘             │
-│              │                  │                                │
-│              │                  │ validated result               │
+│              │                  │ (validated via DTOs)           │
 │              │                  │                                │
 │              │                  │ (returns to WebhookService)   │
 │              │                  │                                │
@@ -251,14 +238,14 @@ curl -X POST http://localhost:3000/webhook?provider=stripe \
    ├─► 4.4 StripeWebhookMapper.getMappingExpression()
    │      - Returns JSONata expression
    │
-   ├─► 4.5 MappingEngineService.executeMapping()
+   ├─► 4.5 MappingHelperService.executeMapping()
    │      - Executes JSONata transformation
    │      - Returns: { transaction_id, reason, currency, amount, provider }
    │
-   └─► 4.6 SchemaValidatorService.validateResult()
+   └─► 4.6 Result validation (via DTOs)
         - Validates against ForterChargebackDto
         - Ensures required fields present
-        - Validates types and formats
+        - Validates types and formats using class-validator
    │
    ▼
 5. Response
@@ -290,12 +277,13 @@ WebhookExceptionFilter (Global)
 1. **WebhookController**: Handles HTTP requests and validates query parameters
 2. **WebhookService**: Orchestrates the transformation process
 3. **MappingRegistryService**: Manages provider-to-mapper mappings (auto-registered via factory)
-4. **MappingEngineService**: Executes JSONata expressions
-5. **SchemaValidatorService**: Validates results against Forter's schema using class-validator
-6. **IWebhookMapper Interface**: Contract for provider-specific mappers
-7. **StripeWebhookMapper**: Stripe-specific implementation
-8. **ProviderValidationPipe**: Validates and normalizes provider query parameter
-9. **WebhookExceptionFilter**: Global exception filter for domain error handling
+4. **MappingHelperService**: Executes JSONata expressions
+5. **IWebhookMapper Interface**: Contract for provider-specific mappers
+6. **StripeWebhookMapper**: Stripe-specific implementation
+7. **ProviderValidationPipe**: Validates and normalizes provider query parameter
+8. **WebhookExceptionFilter**: Global exception filter for domain error handling
+9. **ForterChargebackDto**: DTO with class-validator decorators for schema validation
+10. **MerchantAuthService**: Handles merchant authentication
 
 ### Design Decisions
 
@@ -534,10 +522,20 @@ src/
 │   ├── services/
 │   │   ├── webhook.service.ts
 │   │   ├── mapping-registry.service.ts
-│   │   ├── mapping-engine.service.ts
-│   │   └── schema-validator.service.ts
+│   │   ├── mapping-helper.service.ts
+│   │   └── merchant-auth.service.ts
 │   ├── mappers/
-│   │   └── stripe-webhook.mapper.ts
+│   │   └── stripe/
+│   │       ├── constants/
+│   │       ├── dto/
+│   │       └── stripe-webhook.mapper.ts
+│   ├── guards/
+│   ├── filters/
+│   ├── pipes/
+│   ├── interceptors/
+│   ├── enums/
+│   ├── constants/
+│   ├── helpers/
 │   ├── webhook.controller.ts
 │   └── webhook.module.ts
 └── app.module.ts
