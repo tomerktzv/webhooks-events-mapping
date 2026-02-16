@@ -1,0 +1,25 @@
+services:
+  webhook-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: webhook-mapping-api
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - API_PREFIX=${API_PREFIX:-api}
+    volumes:
+      # Mount source code for hot reload
+      - .:/app
+      # Exclude node_modules to use container's dependencies
+      - /app/node_modules
+    command: npm run start:dev
+    restart: unless-stopped
+    networks:
+      - webhook-network
+
+networks:
+  webhook-network:
+    driver: bridge

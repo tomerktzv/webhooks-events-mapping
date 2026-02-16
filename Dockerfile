@@ -1,0 +1,18 @@
+# Local development Dockerfile
+
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install dependencies
+COPY package*.json ./
+RUN npm ci --legacy-peer-deps
+
+# Copy source code
+COPY . .
+
+# Expose port
+EXPOSE 3000
+
+# Start in development mode with watch
+CMD ["npm", "run", "start:dev"]
