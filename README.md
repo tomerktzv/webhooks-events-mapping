@@ -12,26 +12,49 @@ A NestJS service that transforms payment provider webhooks (Stripe, PayPal, etc.
 
 ## Prerequisites
 
-- Node.js (v18 or higher)
-- npm or yarn
+- Node.js (v18 or higher) and npm, OR
+- Docker and Docker Compose (for local development)
 
 ## Installation
+
+### Option 1: Local Installation
 
 1. Install dependencies:
 ```bash
 npm install
 ```
 
+### Option 2: Docker
+
+```bash
+docker-compose up --build
+```
+
+The server will start on `http://localhost:3000`.
+
 ## Running the Application
 
-### Development Mode
+### Local Development
+
 ```bash
 npm run start:dev
 ```
 
-The server will start on `http://localhost:3000` (or the port configured in your environment).
+### Docker (Local Development)
 
-### Production Mode
+```bash
+# Start with hot reload
+docker-compose up
+
+# Stop
+docker-compose down
+
+# View logs
+docker-compose logs -f
+```
+
+### Production
+
 ```bash
 npm run build
 npm run start:prod
@@ -45,6 +68,15 @@ Transforms a payment provider webhook into Forter's chargeback format.
 
 **Query Parameters:**
 - `provider` (required): The payment provider name (e.g., `stripe`, `paypal`)
+
+**Required Headers:**
+- `Authorization: Bearer <api-key>` OR `X-Forter-API-Key: <api-key>` - Merchant API key for authentication
+- `X-Merchant-Id: <merchant-id>` - Merchant identifier
+- `Content-Type: application/json` - Request content type
+
+**Test Credentials:**
+- API Key: `sk_test_merchant123_secret_key_abc`
+- Merchant ID: `merchant_123`
 
 **Request Body:**
 ```json
@@ -93,8 +125,34 @@ npm run test:e2e
 Or manually test with curl:
 
 ```bash
-curl -X POST http://localhost:3000/webhook?provider=stripe \
+curl -X POST http://localhost:3000/api/webhook?provider=stripe \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer sk_test_merchant123_secret_key_abc" \
+  -H "X-Merchant-Id: merchant_123" \
+  -d '{
+    "payload": {
+      "id": "evt_1OZF3t2eZvKYlo2CqD8kJZ7n",
+      "object": "event",
+      "type": "charge.dispute.created",
+      "data": {
+        "object": {
+          "object": "dispute",
+          "charge": "ch_3OZF3r2eZvKYlo2C1k5D6f7g",
+          "reason": "fraudulent",
+          "currency": "usd",
+          "amount": 5000
+        }
+      }
+    }
+  }'
+```
+
+**Alternative using X-Forter-API-Key header:**
+```bash
+curl -X POST http://localhost:3000/api/webhook?provider=stripe \
+  -H "Content-Type: application/json" \
+  -H "X-Forter-API-Key: sk_test_merchant123_secret_key_abc" \
+  -H "X-Merchant-Id: merchant_123" \
   -d '{
     "payload": {
       "id": "evt_1OZF3t2eZvKYlo2CqD8kJZ7n",
@@ -473,28 +531,14 @@ describe('SquareWebhookMapper', () => {
 - ✅ `MappingRegistryService` - Auto-registers new mappers
 - ✅ Core validation/error handling - Already generic
 
-### Estimated Effort
-
-- **Simple provider**: 2-4 hours
-  - Basic mapper implementation
-  - Mapping expressions
-  - Registration and tests
-
-- **Complex provider**: 4-8 hours
-  - Additional validation DTOs
-  - Custom preprocessing/postprocessing
-  - Multiple event types
-
 ### Example: Adding Square
 
 1. Add `SQUARE = 'square'` to `PaymentProvider` enum
 2. Copy `StripeWebhookMapper` as template
 3. Adapt `extractEventType()` for Square's payload structure
 4. Create Square-specific mapping expressions
-5. Register in module (3 lines)
+5. Register in module
 6. Write tests
-
-**Total changes**: ~200-300 lines of new code, 3 lines modified in module.
 
 ### Best Practices
 
@@ -548,10 +592,7 @@ src/
 npm run test
 ```
 
-### E2E Tests
-```bash
-npm run test:e2e
-```
+For E2E testing, see the [E2E Testing](#e2e-testing) section above.
 
 ## Design Questions & Answers
 
@@ -578,7 +619,7 @@ The architecture is designed for easy extensibility through an **interface-based
 
 #### How to Add a New Provider
 
-**Step 1: Add Provider to Enum** (1 line)
+**Step 1: Add Provider to Enum**
 ```typescript
 export enum PaymentProvider {
   STRIPE = 'stripe',
@@ -596,18 +637,18 @@ src/webhook/mappers/square/
   └── square-webhook.mapper.ts
 ```
 
-**Step 3: Implement Mapper** (~100-200 lines)
+**Step 3: Implement Mapper**
 - Implement `IWebhookMapper` interface
 - Define provider-specific validation logic
 - Create JSONata mapping expressions for each event type
 - Optionally add preprocessing/postprocessing
 
-**Step 4: Register in Module** (3 lines)
+**Step 4: Register in Module**
 - Add mapper to providers array
 - Add to factory function parameters
 - Add to inject array
 
-**Step 5: Write Tests** (~50-100 lines)
+**Step 5: Write Tests**
 - Unit tests for mapper methods
 - Validation tests
 - Mapping expression tests
@@ -620,29 +661,14 @@ src/webhook/mappers/square/
 - ✅ Core validation/error handling - Already generic
 - ✅ Authentication/rate limiting - Already provider-agnostic
 
-#### Estimated Effort
-
-- **Simple Provider**: 2-4 hours
-  - Basic mapper implementation
-  - 1-2 mapping expressions
-  - Registration and tests
-
-- **Complex Provider**: 4-8 hours
-  - Additional validation DTOs
-  - Multiple event types
-  - Custom preprocessing/postprocessing
-  - Comprehensive test coverage
-
 #### Example: Adding Square
 
 1. Add `SQUARE = 'square'` to `PaymentProvider` enum
-2. Copy `StripeWebhookMapper` as template (~150 lines)
+2. Copy `StripeWebhookMapper` as template
 3. Adapt `extractEventType()` for Square's payload structure
 4. Create Square-specific JSONata mapping expressions
-5. Register in `WebhookModule` (3 lines modified)
+5. Register in `WebhookModule`
 6. Write unit tests
-
-**Total**: ~200-300 lines of new code, 3 lines modified in module.
 
 #### Why This Design Works
 
@@ -670,7 +696,7 @@ Merchants can use the production endpoint with test payloads and get immediate, 
 
 #### Recommended Tooling (Priority Order)
 
-##### 1. Enhanced Swagger/OpenAPI Documentation (Quick Win - 1 day)
+##### 1. Enhanced Swagger/OpenAPI Documentation
 
 **What**: Improve the existing Swagger UI with:
 - Pre-filled example payloads for each provider/event type
@@ -703,7 +729,7 @@ Merchants can use the production endpoint with test payloads and get immediate, 
 })
 ```
 
-##### 2. Postman/Insomnia Collection (1-2 days)
+##### 2. Postman/Insomnia Collection
 
 **What**: Pre-configured API collection with:
 - Environment variables for API keys and merchant IDs
@@ -719,7 +745,7 @@ Merchants can use the production endpoint with test payloads and get immediate, 
 
 **Deliverable**: Export a Postman collection JSON file
 
-##### 3. Web UI Testing Dashboard (1-2 weeks)
+##### 3. Web UI Testing Dashboard
 
 **What**: Simple web interface with:
 - JSON payload editor with syntax highlighting
@@ -740,7 +766,7 @@ Merchants can use the production endpoint with test payloads and get immediate, 
 
 **Tech Stack**: React/Vue frontend calling the existing `/webhook` endpoint
 
-##### 4. CLI Tool (Optional - 1 week)
+##### 4. CLI Tool (Optional)
 
 **What**: Command-line tool for technical merchants:
 ```bash
@@ -757,11 +783,11 @@ forter-test --provider stripe --payload '{"type": "..."}'
 
 #### Recommended Approach
 
-**Phase 1 (Immediate - 1 day)**:
+**Phase 1 (Immediate)**:
 1. Enhance Swagger with example payloads
 2. Create Postman collection
 
-**Phase 2 (If Needed - 1-2 weeks)**:
+**Phase 2 (If Needed)**:
 3. Build Web UI Dashboard (if merchants request it)
 
 **Phase 3 (Optional)**:
