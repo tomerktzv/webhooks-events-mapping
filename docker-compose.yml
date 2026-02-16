@@ -15,7 +15,6 @@ services:
       - .:/app
       # Exclude node_modules to use container's dependencies
       - /app/node_modules
-      - /app/dist
     command: npm run start:dev
     restart: unless-stopped
     networks:
