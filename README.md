@@ -38,23 +38,6 @@ The server will start on `http://localhost:3000/api` (or the port configured in 
 - Visit Swagger documentation: `http://localhost:3000/api/docs`
 - The API is ready to accept webhook requests
 
-## Installation
-
-### Option 1: Local Installation
-
-1. Install dependencies:
-```bash
-npm install
-```
-
-### Option 2: Docker
-
-```bash
-docker-compose up --build
-```
-
-The server will start on `http://localhost:3000/api`.
-
 ## Running the Application
 
 ### Local Development
@@ -153,10 +136,6 @@ npm run test:e2e
 ```
 
 **Note:** The E2E tests use `supertest` and automatically start the application, so you don't need to run the server separately.
-
-**Test Credentials Used:**
-- API Key: `sk_test_merchant123_secret_key_abc`
-- Merchant ID: `merchant_123`
 
 **Expected Output:**
 ```
@@ -682,58 +661,7 @@ The architecture is designed for easy extensibility through an **interface-based
 - Mapping expressions, validation DTOs, and business logic are self-contained
 - Changes to one provider don't affect others
 
-#### How to Add a New Provider
-
-**Step 1: Add Provider to Enum**
-```typescript
-export enum PaymentProvider {
-  STRIPE = 'stripe',
-  SQUARE = 'square',  // ← Add here
-}
-```
-
-**Step 2: Create Provider Directory** (copy structure from Stripe)
-```
-src/webhook/mappers/square/
-  ├── constants/
-  │   └── mapping-expressions.const.ts
-  ├── dto/
-  │   └── square-webhook-basic.dto.ts
-  └── square-webhook.mapper.ts
-```
-
-**Step 3: Implement Mapper**
-- Implement `IWebhookMapper` interface
-- Define provider-specific validation logic
-- Create JSONata mapping expressions for each event type
-- Optionally add preprocessing/postprocessing
-
-**Step 4: Register in Module**
-- Add mapper to providers array
-- Add to factory function parameters
-- Add to inject array
-
-**Step 5: Write Tests**
-- Unit tests for mapper methods
-- Validation tests
-- Mapping expression tests
-
-#### What You DON'T Need to Change
-
-- ✅ `WebhookService` - Works with any mapper via interface
-- ✅ `WebhookController` - No changes needed
-- ✅ `MappingRegistryService` - Auto-registers new mappers
-- ✅ Core validation/error handling - Already generic
-- ✅ Authentication/rate limiting - Already provider-agnostic
-
-#### Example: Adding Square
-
-1. Add `SQUARE = 'square'` to `PaymentProvider` enum
-2. Copy `StripeWebhookMapper` as template
-3. Adapt `extractEventType()` for Square's payload structure
-4. Create Square-specific JSONata mapping expressions
-5. Register in `WebhookModule`
-6. Write unit tests
+For detailed step-by-step instructions on adding a new provider, see the [Adding a New Payment Provider](#adding-a-new-payment-provider) section above.
 
 #### Why This Design Works
 
