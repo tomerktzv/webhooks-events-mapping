@@ -12,8 +12,31 @@ A NestJS service that transforms payment provider webhooks (Stripe, PayPal, etc.
 
 ## Prerequisites
 
-- Node.js (v18 or higher) and npm, OR
-- Docker and Docker Compose (for local development)
+- Node.js (v18 or higher)
+- npm or yarn
+- Docker and Docker Compose (optional, for containerized development)
+
+## Quick Start
+
+### 1. Install Dependencies
+
+```bash
+npm install
+```
+
+### 2. Start the Application
+
+```bash
+npm run start:dev
+```
+
+The server will start on `http://localhost:3000/api` (or the port configured in your environment via `PORT` environment variable).
+
+### 3. Verify It's Running
+
+- Check the console for: `🚀 Application is running on: http://localhost:3000/api`
+- Visit Swagger documentation: `http://localhost:3000/api/docs`
+- The API is ready to accept webhook requests
 
 ## Installation
 
@@ -30,7 +53,7 @@ npm install
 docker-compose up --build
 ```
 
-The server will start on `http://localhost:3000`.
+The server will start on `http://localhost:3000/api`.
 
 ## Running the Application
 
@@ -39,6 +62,8 @@ The server will start on `http://localhost:3000`.
 ```bash
 npm run start:dev
 ```
+
+The application will start with hot-reload enabled. Any changes to source files will automatically restart the server.
 
 ### Docker (Local Development)
 
@@ -116,13 +141,39 @@ Transforms a payment provider webhook into Forter's chargeback format.
 
 ## E2E Testing
 
-### Test Stripe Chargeback Webhook
+The E2E tests verify the complete webhook transformation flow including:
+- Request validation (missing/invalid provider)
+- Authentication and authorization
+- Successful webhook transformation (valid request with proper authentication)
+- Error handling
 
+**Run E2E tests:**
 ```bash
 npm run test:e2e
 ```
 
-Or manually test with curl:
+**Note:** The E2E tests use `supertest` and automatically start the application, so you don't need to run the server separately.
+
+**Test Credentials Used:**
+- API Key: `sk_test_merchant123_secret_key_abc`
+- Merchant ID: `merchant_123`
+
+**Expected Output:**
+```
+PASS  tests/e2e/webhook.e2e-spec.ts
+  WebhookController (e2e)
+    ✓ /api/webhook (POST) - should return 403 for missing auth
+    ✓ /api/webhook (POST) - should return 400 for missing provider
+    ✓ /api/webhook (POST) - should return 400 for invalid provider
+    ✓ /api/webhook (POST) - should successfully transform valid Stripe webhook
+
+Test Suites: 1 passed, 1 total
+Tests:       4 passed, 4 total
+```
+
+### Manual Testing with curl
+
+You can also manually test the API with curl:
 
 ```bash
 curl -X POST http://localhost:3000/api/webhook?provider=stripe \
@@ -588,9 +639,23 @@ src/
 ## Testing
 
 ### Unit Tests
+
+Run all unit tests:
 ```bash
 npm run test
 ```
+
+Run tests in watch mode (automatically re-runs on file changes):
+```bash
+npm run test:watch
+```
+
+Generate coverage report:
+```bash
+npm run test:cov
+```
+
+### E2E Tests
 
 For E2E testing, see the [E2E Testing](#e2e-testing) section above.
 
